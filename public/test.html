@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      // function query(data) {
+      //   let steps = [];
+      //   let manipulateData = data;
+      //   const manipulate = {
+      //     where(predicate) {
+      //       manipulateData = manipulateData.filter(predicate);
+      //     },
+      //     orderBy(key, desc) {
+      //       manipulateData.sort((a, b) => {
+      //         if (desc) {
+      //           return b[key] - a[key];
+      //         } else {
+      //           return a[key] - b[key];
+      //         }
+      //       });
+      //     },
+      //     groupBy(key) {
+      //       const keyMap = manipulateData.reduce((acc, cur) => {
+      //         const curKeyVal = cur[key];
+      //         if (!acc[curKeyVal]) {
+      //           acc[curKeyVal] = [];
+      //         }
+      //         acc[curKeyVal].push(cur);
+      //         return acc;
+      //       }, {});
+      //       const res = [];
+      //       for (const k in keyMap) {
+      //         res.push(keyMap[k]);
+      //       }
+      //       manipulateData = res;
+      //     }
+      //   };
+      //   const resObj = {
+      //     where(predicate) {
+      //       steps.push({ method: 'where', args: [predicate] });
+      //       return resObj;
+      //     },
+      //     orderBy(key, desc) {
+      //       steps.push({ method: 'orderBy', args: [key, desc] });
+      //       return resObj;
+      //     },
+      //     groupBy(key) {
+      //       steps.push({ method: 'groupBy', args: [key] });
+      //       return resObj;
+      //     },
+      //     execute() {
+      //       steps.forEach(({ method, args }) => {
+      //         console.log(`doing ${method}`);
+      //         manipulate[method].apply(null, args);
+      //       });
+      //       // console.log(manipulateData);
+      //       return manipulateData;
+      //     }
+      //   };
+      //   return resObj;
+      // }
+
+      function query(data) {
+        let _lock = true;
+        let steps = [];
+        const prototypeObj = {
+          where(predicate) {
+            if (_lock) {
+              steps.push({ method: 'where', args: [predicate] });
+              return this;
+            }
+            try {
+              const res = this.data.filter(predicate);
+              this.data = res;
+            } catch (err) {
+              console.warn(`typeof query data is illegal`);
+            }
+            return this;
+          },
+          orderBy(key, desc) {
+            if (_lock) {
+              steps.push({ method: 'orderBy', args: [key, desc] });
+              return this;
+            }
+            this.data.sort((a, b) => {
+              if (desc) {
+                return b[key] - a[key];
+              } else {
+                return a[key] - b[key];
+              }
+            });
+            return this;
+          },
+          groupBy(key) {
+            if (_lock) {
+              steps.push({ method: 'groupBy', args: [key] });
+              return this;
+            }
+            const keyMap = this.data.reduce((acc, cur) => {
+              const curKeyVal = cur[key];
+              if (!acc[curKeyVal]) {
+                acc[curKeyVal] = [];
+              }
+              acc[curKeyVal].push(cur);
+              return acc;
+            }, {});
+            const res = [];
+            for (const k in keyMap) {
+              res.push(keyMap[k]);
+            }
+            this.data = res;
+            return this;
+          },
+          execute() {
+            const that = this;
+            _lock = false;
+            steps.forEach(({ method, args }) => {
+              that[method].apply(that, args);
+            });
+            steps = [];
+            _lock = true;
+            return this.data;
+          }
+        };
+        const obj = Object.create(prototypeObj);
+        obj.data = data;
+        return obj;
+      }
+
+      const data = [
+        { name: 'foo', age: 16, city: 'shanghai' },
+        { name: 'bar', age: 24, city: 'hangzhou' },
+        { name: 'fiz', age: 22, city: 'shanghai' },
+        { name: 'baz', age: 19, city: 'hangzhou' }
+      ];
+      query(data)
+        .where((item) => item.age > 18)
+        .orderBy('age')
+        .groupBy('city')
+        .execute();
+      // console.log(data);
+    </script>
+  </body>
+</html>
